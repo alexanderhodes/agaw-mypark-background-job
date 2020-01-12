@@ -29,6 +29,7 @@ public class Housekeeping {
         this.removeBookings();
         this.removeAbsences();
         this.removeTokens();
+        this.updateParkingSpaces();
         log.info("ended housekeeping");
     }
 
@@ -65,8 +66,14 @@ public class Housekeeping {
         return response.getStatusCode().equals(HttpStatus.OK);
     }
 
-    public void updateParkingSpaces() {
+    private boolean updateParkingSpaces() {
+        log.info("started update parkingspaces");
+        String url = this.urlHelper.createUrlForResource("parkingspaces/system/update");
 
+        HttpEntity<String> body = this.prepareHeader();
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, body, String.class);
+        log.info("ended update parkingspaces");
+        return response.getStatusCode().equals(HttpStatus.OK);
     }
 
     private HttpEntity<String> prepareHeader() {
