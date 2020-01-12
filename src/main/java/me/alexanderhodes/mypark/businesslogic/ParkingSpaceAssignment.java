@@ -3,6 +3,8 @@ package me.alexanderhodes.mypark.businesslogic;
 import me.alexanderhodes.mypark.auth.JobAuthentication;
 import me.alexanderhodes.mypark.helper.UrlHelper;
 import me.alexanderhodes.mypark.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpEntity;
@@ -13,10 +15,13 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 @Configuration()
 public class ParkingSpaceAssignment {
+
+    private static final Logger log = LoggerFactory.getLogger(ParkingSpaceAssignment.class);
 
     @Autowired
     private JobAuthentication jobAuthentication;
@@ -27,34 +32,40 @@ public class ParkingSpaceAssignment {
 
     private BookingStatus[] bookingStatuses;
 
-    public void doTheMagic() {
+    public void doTheMagic(LocalDateTime localDateTime) {
+        log.info("started parkingspace assignment for {} and weekday {}", localDateTime.toString(),
+                localDateTime.getDayOfWeek().getValue());
+
+        int dayOfTheWeek = localDateTime.getDayOfWeek().getValue();
+        String date = localDateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")).toString();
+
         // 0. request bookingstatus
         this.requestBookingStatus();
 
         // 1. Serienbuchungen abfragen und Buchungen erzeugen
-        SeriesBooking[] seriesBookings = this.requestSeriesBookings();
+        SeriesBooking[] seriesBookings = this.requestSeriesBookings(dayOfTheWeek);
 
         for (SeriesBooking seriesBooking : seriesBookings) {
             this.createBooking(seriesBooking);
         }
 
         // 2. Serienabwesenheiten abfragen und Abwesenheiten erzeugen
-        SeriesAbsence[] seriesAbsences = this.requestSeriesAbsences();
+        SeriesAbsence[] seriesAbsences = this.requestSeriesAbsences(dayOfTheWeek);
 
         for (SeriesAbsence seriesAbsence : seriesAbsences) {
             this.createAbsence(seriesAbsence);
         }
 
         // 5. Parkplätze vergeben
-        this.assignParkingSpaces();
+        this.assignParkingSpaces(date);
     }
 
     // 1. Serienbuchungen abfragen und Buchungen erzeugen
-    public SeriesBooking[] requestSeriesBookings() {
-        int weekDay = 1;
+    public SeriesBooking[] requestSeriesBookings(int weekDay) {
         String url = this.urlHelper.createUrlForResource("seriesbookings/system/" + weekDay);
         HttpEntity<String> body = this.prepareHeader();
-        ResponseEntity<SeriesBooking[]> response = restTemplate.exchange(url, HttpMethod.GET, body, SeriesBooking[].class);
+        ResponseEntity<SeriesBooking[]> response = restTemplate.exchange(url, HttpMethod.GET, body,
+                SeriesBooking[].class);
         System.out.println("length: " + response.getBody().length);
         return response.getBody();
     }
@@ -79,11 +90,11 @@ public class ParkingSpaceAssignment {
     }
 
     // 2. Serienabwesenheiten abfragen und Abwesenheiten erzeugen
-    public SeriesAbsence[] requestSeriesAbsences() {
-        int weekDay = 1;
+    public SeriesAbsence[] requestSeriesAbsences(int weekDay) {
         String url = this.urlHelper.createUrlForResource("seriesabsences/system/" + weekDay);
         HttpEntity<String> body = this.prepareHeader();
-        ResponseEntity<SeriesAbsence[]> response = restTemplate.exchange(url, HttpMethod.GET, body, SeriesAbsence[].class);
+        ResponseEntity<SeriesAbsence[]> response = restTemplate.exchange(url, HttpMethod.GET, body,
+                SeriesAbsence[].class);
         System.out.println("length: " + response.getBody().length);
         return response.getBody();
     }
@@ -104,8 +115,7 @@ public class ParkingSpaceAssignment {
     }
 
     // 3. Freie Parkplätze ermitteln
-    public ParkingSpace[] requestFreeParkingSpaces() {
-        String day = "13.01.2020";
+    public ParkingSpace[] requestFreeParkingSpaces(String day) {
         String url = this.urlHelper.createUrlForResource("parkingspaces/system/free/" + day);
         HttpEntity<String> body = this.prepareHeader();
         ResponseEntity<ParkingSpace[]> response = restTemplate.exchange(url, HttpMethod.GET, body, ParkingSpace[].class);
@@ -114,23 +124,20 @@ public class ParkingSpaceAssignment {
     }
 
     // 4. Buchungen ermitteln
-    public Booking[] requestBookings() {
-        String day = "13.01.2020";
+    public Booking[] requestBookings(String day) {
         String url = this.urlHelper.createUrlForResource("bookings/system/" + day);
         HttpEntity<String> body = this.prepareHeader();
         ResponseEntity<Booking[]> response = restTemplate.exchange(url, HttpMethod.GET, body, Booking[].class);
-//        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, body, String.class);
         System.out.println("length: " + response.getBody().length);
-//        System.out.println("length: " + response.getBody());
         return response.getBody();
     }
 
     // 5. Parkplätze vergeben
-    private void assignParkingSpaces() {
+    private void assignParkingSpaces(String date) {
         // 3. Freie Parkplätze ermitteln
-        ParkingSpace[] parkingSpaces = this.requestFreeParkingSpaces();
+        ParkingSpace[] parkingSpaces = this.requestFreeParkingSpaces(date);
         // 4. Buchungen ermitteln
-        Booking[] bookings = this.requestBookings();
+        Booking[] bookings = this.requestBookings(date);
 
         if (parkingSpaces.length > bookings.length) {
             // es gibt mehr freie Parkplätze als Buchungen
@@ -151,17 +158,24 @@ public class ParkingSpaceAssignment {
             int i;
 
             for (i = 0; i < parkingSpaces.length; i++) {
-                BookingStatus bookingStatus = this.getBookingStatus(BookingStatus.CONFIRMED);
+                int index = createRandomIndex(bookings.length);
 
-                bookings[i].setParkingSpace(parkingSpaces[i]);
+                while (bookings[index].getParkingSpace() != null) {
+                    index = createRandomIndex(bookings.length);
+                }
+
+                BookingStatus bookingStatus = this.getBookingStatus(BookingStatus.CONFIRMED);
+                bookings[index].setParkingSpace(parkingSpaces[i]);
                 // set booking status
-                bookings[i].setBookingStatus(bookingStatus);
+                bookings[index].setBookingStatus(bookingStatus);
             }
 
-            for (int j = i; j < bookings.length; j++) {
-                BookingStatus bookingStatus = this.getBookingStatus(BookingStatus.DECLINED);
-                // set booking status
-                bookings[i].setBookingStatus(bookingStatus);
+            for (int j = 0; j < bookings.length; j++) {
+                if (bookings[i].getParkingSpace() == null) {
+                    BookingStatus bookingStatus = this.getBookingStatus(BookingStatus.DECLINED);
+                    // set booking status
+                    bookings[i].setBookingStatus(bookingStatus);
+                }
             }
 
             // send to backend

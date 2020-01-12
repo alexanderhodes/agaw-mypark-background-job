@@ -4,6 +4,8 @@ import me.alexanderhodes.mypark.auth.JobAuthentication;
 import me.alexanderhodes.mypark.businesslogic.Housekeeping;
 import me.alexanderhodes.mypark.businesslogic.ParkingSpaceAssignment;
 import me.alexanderhodes.mypark.helper.UrlHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,8 +14,13 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
+import java.util.Date;
+
 @SpringBootApplication
 public class MyParkBackgroundJobApplication {
+
+    private static final Logger log = LoggerFactory.getLogger(MyParkBackgroundJobApplication.class);
 
     @Autowired
     private UrlHelper urlHelper;
@@ -36,30 +43,27 @@ public class MyParkBackgroundJobApplication {
     @Bean
     public CommandLineRunner commandLineRunner(RestTemplate restTemplate) {
         return args -> {
+            log.info("Started at {}", new Date());
+            // AUTHENTICATION
             this.jobAuthentication.authenticate();
-            System.out.println("token: " + this.jobAuthentication.getToken());
 
+            LocalDateTime localDateTime = LocalDateTime.now();
+
+            int dayOfTheWeek = localDateTime.getDayOfWeek().getValue();
+
+            if (dayOfTheWeek <= 5) {
+                localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(1) : localDateTime.plusDays(3);
+
+
+            }
+
+            // HOUSEKEEPING
+            this.housekeeping.doTheJob();
+
+            // PARKINGSPACE ASSIGNMENT
             this.parkingSpaceAssignment.doTheMagic();
 
             // Montag -> 1, Sonntag -> 7
-
-//            String url = this.urlHelper.getBackendUrl();
-//            System.out.println("Backend Url: " + url);
-//
-//            ResponseEntity<Auth> response = this.jobAuthentication.authenticate();
-//
-//            System.out.println("Status Code: " + response.getStatusCode().name());
-//            System.out.println("Response: " + response.getBody());
-//            Auth auth = response.getBody();
-//            System.out.println("token: " + auth.getToken());
-//            String token = this.jobAuthentication.getToken();
-//
-//            System.out.println("jobAuthentication-token: " + token);
-//
-//            parkingSpaceAssignment.requestSeriesBookings();
-//            parkingSpaceAssignment.requestSeriesAbsences();
-//            parkingSpaceAssignment.requestFreeParkingSpaces();
-//            parkingSpaceAssignment.requestBookings();
         };
     }
 
