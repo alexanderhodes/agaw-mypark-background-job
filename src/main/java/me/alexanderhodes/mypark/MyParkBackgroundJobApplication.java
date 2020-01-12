@@ -54,16 +54,13 @@ public class MyParkBackgroundJobApplication {
             if (dayOfTheWeek <= 5) {
                 localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(1) : localDateTime.plusDays(3);
 
+                // PARKINGSPACE ASSIGNMENT
+                this.parkingSpaceAssignment.doTheMagic(localDateTime);
 
             }
 
             // HOUSEKEEPING
             this.housekeeping.doTheJob();
-
-            // PARKINGSPACE ASSIGNMENT
-            this.parkingSpaceAssignment.doTheMagic();
-
-            // Montag -> 1, Sonntag -> 7
         };
     }
 
