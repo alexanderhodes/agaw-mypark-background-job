@@ -3,10 +3,10 @@ package me.alexanderhodes.mypark;
 import me.alexanderhodes.mypark.auth.JobAuthentication;
 import me.alexanderhodes.mypark.businesslogic.Housekeeping;
 import me.alexanderhodes.mypark.businesslogic.ParkingSpaceAssignment;
-import me.alexanderhodes.mypark.helper.UrlHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Date;
 
 @SpringBootApplication
@@ -23,13 +24,16 @@ public class MyParkBackgroundJobApplication {
     private static final Logger log = LoggerFactory.getLogger(MyParkBackgroundJobApplication.class);
 
     @Autowired
-    private UrlHelper urlHelper;
-    @Autowired
     private JobAuthentication jobAuthentication;
     @Autowired
     private Housekeeping housekeeping;
     @Autowired
     private ParkingSpaceAssignment parkingSpaceAssignment;
+
+    @Value("${mypark.job.parkingspace}")
+    private int hourParkingSpaceAssignment;
+    @Value("${mypark.job.housekeeping}")
+    private int hourHousekeeping;
 
     public static void main(String[] args) {
         SpringApplication.run(MyParkBackgroundJobApplication.class, args);
@@ -48,19 +52,23 @@ public class MyParkBackgroundJobApplication {
             this.jobAuthentication.authenticate();
 
             LocalDateTime localDateTime = LocalDateTime.now();
+            LocalTime localTime = localDateTime.toLocalTime();
 
             int dayOfTheWeek = localDateTime.getDayOfWeek().getValue();
 
             if (dayOfTheWeek <= 5) {
                 localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(1) : localDateTime.plusDays(3);
 
-                // PARKINGSPACE ASSIGNMENT
-                this.parkingSpaceAssignment.doTheMagic(localDateTime);
-
+                if (localTime.getHour() == this.hourParkingSpaceAssignment) {
+                    // PARKINGSPACE ASSIGNMENT
+                    this.parkingSpaceAssignment.doTheMagic(localDateTime);
+                }
             }
 
-            // HOUSEKEEPING
-            this.housekeeping.doTheJob();
+            if (localTime.getHour() == this.hourHousekeeping) {
+                // HOUSEKEEPING
+                this.housekeeping.doTheJob();
+            }
         };
     }
 
