@@ -37,24 +37,29 @@ public class ParkingSpaceAssignment {
                 localDateTime.getDayOfWeek().getValue());
 
         int dayOfTheWeek = localDateTime.getDayOfWeek().getValue();
-        String date = localDateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")).toString();
+        String date = localDateTime.format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
 
+        log.info("step 0: start request bookingstatus");
         // 0. request bookingstatus
         this.requestBookingStatus();
+        log.info("step 0: end request bookingstatus");
 
+        log.info("step 1: start request and create seriesbookings");
         // 1. Serienbuchungen abfragen und Buchungen erzeugen
         SeriesBooking[] seriesBookings = this.requestSeriesBookings(dayOfTheWeek);
 
         for (SeriesBooking seriesBooking : seriesBookings) {
             this.createBooking(seriesBooking);
         }
-
+        log.info("step 1: end request and create seriesbookings");
+        log.info("step 2: start request and create seriesabsence");
         // 2. Serienabwesenheiten abfragen und Abwesenheiten erzeugen
         SeriesAbsence[] seriesAbsences = this.requestSeriesAbsences(dayOfTheWeek);
 
         for (SeriesAbsence seriesAbsence : seriesAbsences) {
             this.createAbsence(seriesAbsence);
         }
+        log.info("step 2: end request and create seriesabsence");
 
         // 5. Parkplätze vergeben
         this.assignParkingSpaces(date);
@@ -132,12 +137,17 @@ public class ParkingSpaceAssignment {
         return response.getBody();
     }
 
-    // 5. Parkplätze vergeben
     private void assignParkingSpaces(String date) {
+        log.info("step 3: start request free parkingspaces");
         // 3. Freie Parkplätze ermitteln
         ParkingSpace[] parkingSpaces = this.requestFreeParkingSpaces(date);
+        log.info("step 3: end request free parkingspaces");
+        log.info("step 4: start request bookings");
         // 4. Buchungen ermitteln
         Booking[] bookings = this.requestBookings(date);
+        log.info("step 4: end request bookings");
+        log.info("step 5: start parkingspace assignment");
+        // 5. Parkplätze vergeben
 
         if (parkingSpaces.length > bookings.length) {
             // es gibt mehr freie Parkplätze als Buchungen
@@ -183,6 +193,7 @@ public class ParkingSpaceAssignment {
                 this.updateBooking(booking);
             }
         }
+        log.info("step 5: end parkingspace assignment");
     }
 
     private int createRandomIndex(int max) {
