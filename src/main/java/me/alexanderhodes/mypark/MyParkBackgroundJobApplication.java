@@ -55,17 +55,20 @@ public class MyParkBackgroundJobApplication {
             LocalTime localTime = localDateTime.toLocalTime();
 
             int dayOfTheWeek = localDateTime.getDayOfWeek().getValue();
+            log.info("for day of the week {}", dayOfTheWeek);
 
             if (dayOfTheWeek <= 5) {
                 localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(1) : localDateTime.plusDays(3);
 
                 if (localTime.getHour() == this.hourParkingSpaceAssignment) {
+                    log.info("in ParkingSpaceAssignment {}", new Date());
                     // PARKINGSPACE ASSIGNMENT
                     this.parkingSpaceAssignment.doTheMagic(localDateTime);
                 }
             }
 
             if (localTime.getHour() == this.hourHousekeeping) {
+                log.info("in Housekeeping {}", new Date());
                 // HOUSEKEEPING
                 this.housekeeping.doTheJob();
             }
