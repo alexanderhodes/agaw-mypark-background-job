@@ -58,7 +58,8 @@ public class MyParkBackgroundJobApplication {
             log.info("for day of the week {}", dayOfTheWeek);
 
             if (dayOfTheWeek <= 5) {
-                localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(1) : localDateTime.plusDays(3);
+                // bei Freitagsvergabe müssen drei Tage addiert werden
+                localDateTime = dayOfTheWeek == 5 ? localDateTime.plusDays(3) : localDateTime.plusDays(1);
 
                 if (localTime.getHour() == this.hourParkingSpaceAssignment) {
                     log.info("in ParkingSpaceAssignment {}", new Date());
