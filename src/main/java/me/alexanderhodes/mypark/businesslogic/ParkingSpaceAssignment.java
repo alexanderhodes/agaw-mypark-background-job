@@ -90,8 +90,12 @@ public class ParkingSpaceAssignment {
 
         String url = this.urlHelper.createUrlForResource("bookings");
         HttpEntity<Booking> body = this.prepareHeader(booking);
-        ResponseEntity<Booking> responseEntity = restTemplate.exchange(url, HttpMethod.POST, body, Booking.class);
-        System.out.println("CREATE BOOKING - StatusCode: " + responseEntity.getStatusCode().value());
+        try {
+            ResponseEntity<Booking> responseEntity = restTemplate.exchange(url, HttpMethod.POST, body, Booking.class);
+            System.out.println("CREATE BOOKING - StatusCode: " + responseEntity.getStatusCode().value());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     // 2. Serienabwesenheiten abfragen und Abwesenheiten erzeugen
